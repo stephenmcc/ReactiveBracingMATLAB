@@ -1,0 +1,81 @@
+% Simulation conditions
+x = 0.0;
+xd = 0.35;
+dt = 0.01;
+N = 61;
+
+% Physical parameters
+g = 9.81;
+z0 = 0.874;
+m = 95.0;
+w = sqrt(g / z0);
+
+% lgd = cell(N, 1);
+
+for i = 1:N
+    showLegend = i == 1 || i == N || i == 31;
+    t = (i - 1) * dt;
+    computeCapturableForces(x, xd, i / N, showLegend, t);
+    % lgd{i} = strcat('Position = ', num2str(x), ', Velocity = ', num2str(xd));
+    if i < N
+        x = x + xd * dt;
+        xd = xd + x * w^2 * dt;
+    end
+end
+
+% Compute tangent line
+xTanN = linspace();
+
+hold off
+legend show
+
+function computeCapturableForces(x, xd, alpha, includeInLegend, t)
+    g = 9.81;
+    m = 95.0;
+    z0 = 0.874;
+
+    % Capturability constraint
+    syms fx fz
+    assume(fx, 'real')
+    assume(fz, 'real')
+    capturabilityConstraint = 0 == x - fx / (m * (g - fz / m) / z0) + xd / sqrt((g - fz / m) / z0);
+    capturabilityForceXArray = solve(capturabilityConstraint, fx);
+    capturabilityForceX = capturabilityForceXArray(1, 1);
+
+    % Expected horizontal bracing force when fz = 0
+    % fxExpected = (m*w^2) * (x + xd / w)
+    % fxComputed = double(subs(capturabilityForceX(1,1), [fz], [0.0]))
+
+    % Bracing force plots
+    fzN = linspace(0, 0.99 * m * g, 1000);
+    fxN = subs(capturabilityForceX, fz, fzN);
+    color = interpolate(alpha, [0.0 0.9 0.1], [0.9 0.1 0.0]);
+
+    if includeInLegend
+        plot(fxN, fzN, 'Linewidth', 2, 'Color', color, 'DisplayName', strcat('t=', num2str(t), 'sec'))
+    else
+        plot(fxN, fzN, 'Linewidth', 2, 'Color', color, 'HandleVisibility', 'off')
+    end
+
+    axisPadding = 1.15;
+    maxLateralForce = double(max(fxN));
+
+    % Plot settings
+    axis equal
+    xlim([0 axisPadding * maxLateralForce])
+    ylim([0 m * g])
+    title('LIPM Capturable Bracing Forces')
+    xlabel('fx [N]') 
+    ylabel('fz [N]') 
+
+    hold on
+
+    % Plot constant force along XZ plane that matches fz=0
+    % hold on
+    % fzEq = sqrt(maxLateralForce^2 - fxN.^2);
+    % plot(fxN, fzEq)
+end
+
+function val = interpolate(alpha, a, b)
+    val = (1.0 - alpha) * a + alpha * b;
+end
